@@ -1,0 +1,79 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Regras para o projeto Wallet App com Electron + React
+
+## 🎯 Arquitetura
+- Aplicação desktop usando Electron
+- UI construída com React (Vite + TypeScript)
+- Separação entre processo principal (`main`) e processo de renderização (`renderer`)
+
+## 🔧 Stack
+- Electron 29+
+- React + Vite + TypeScript
+- Zustand para estado global
+- TailwindCSS + Shadcn/ui para UI
+- React Router DOM para navegação
+- React Hook Form + Zod para formulários
+- Axios para chamadas (se for usar API local ou externa)
+
+## 📁 Estrutura de pastas (sugerida)
+```
+    wallet-app/
+    ├── main/ # Processo principal do Electron
+    │ └── main.ts # Criação da janela, IPC, etc
+    ├── preload/ # Comunicação segura entre main e renderer
+    │ └── preload.ts
+    ├── renderer/ # React + Vite App
+    │ ├── src/
+    │ │ ├── pages/
+    │ │ ├── components/
+    │ │ ├── features/
+    │ │ ├── hooks/
+    │ │ ├── stores/
+    │ │ ├── types/
+    │ │ ├── layouts/
+    │ │ └── App.tsx
+    │ └── index.html
+    ├── package.json
+    ├── electron.vite.config.ts
+    └── vite.config.ts
+```
+
+## 🚪 Comunicação Main ↔ Renderer
+- Use `contextBridge` no `preload.ts` para expor funcionalidades seguras
+- Use `ipcMain` e `ipcRenderer` para comunicação entre processos
+- Exemplo de função: salvar dados no sistema de arquivos, ler transações de um JSON
+
+## 💅 UI
+- Usar Tailwind + Shadcn para um visual limpo e responsivo
+- Adotar o padrão de componentes reutilizáveis por domínio
+- Utilizar `lucide-react` para ícones
+
+## ⚙️ Funcionalidades
+- Transações com `id`, `title`, `amount`, `type`, `category`, `date`
+- Saldo total, receitas e despesas calculados dinamicamente
+- Categorias e metas de gastos por mês
+- Persistência local com JSON/LocalStorage (depois podemos usar SQLite)
+
+## 🔒 Persistência (temporária)
+- Durante o MVP, salvar dados em `LocalStorage`
+- Depois, permitir salvar/ler um arquivo JSON local via Electron File System
+
+## ⚙️ Estado Global
+- Zustand com persistência
+- Separar estados por domínio: `useTransactionStore`, `useSettingsStore`, etc.
+
+## 🧪 Testes
+- (Opcional) Testes com Vitest + Testing Library no renderer
+
+## ✨ Instruções para Cursor
+- Criar arquivos da interface dentro de `renderer/src`
+- Criar lógica nativa, IPC ou integrações no diretório `main/` ou `preload/`
+- Sempre seguir a estrutura, nomeação e divisão por domínio
+- Componentes novos ficam em `components/` ou `features/`
+- Páginas principais ficam em `pages/`
+
+
