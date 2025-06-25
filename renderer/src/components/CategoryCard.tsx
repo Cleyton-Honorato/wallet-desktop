@@ -22,9 +22,9 @@ export function CategoryCard({ category, onEdit, onDelete }: CategoryCardProps) 
               style={{ backgroundColor: `${category.color}20` }}
             >
               <CategoryIcon 
-                name={category.icon} 
+                icon={category.icon} 
                 color={category.color} 
-                size={20}
+                size="lg"
               />
             </div>
             <div>

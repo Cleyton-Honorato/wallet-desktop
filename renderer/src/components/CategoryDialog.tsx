@@ -36,10 +36,10 @@ const AVAILABLE_ICONS = {
     'PiggyBank', 'Gift', 'Award', 'Star', 'Circle'
   ],
   expense: [
-    'UtensilsCrossed', 'Car', 'Home', 'Heart', 'GraduationCap',
-    'Gamepad2', 'ShoppingCart', 'Plane', 'Shirt', 'Fuel',
-    'Phone', 'Zap', 'Wifi', 'CreditCard', 'Building',
-    'Users', 'PawPrint', 'Wrench', 'Book', 'Music'
+    'CreditCard', 'Wallet', 'Receipt', 'UtensilsCrossed', 'Car', 
+    'Home', 'Heart', 'GraduationCap', 'Gamepad2', 'ShoppingCart', 
+    'Plane', 'Shirt', 'Fuel', 'Phone', 'Zap', 
+    'Wifi', 'Building', 'Users', 'PawPrint', 'Wrench'
   ]
 }
 
@@ -163,9 +163,9 @@ export function CategoryDialog({
                   }`}
                 >
                   <CategoryIcon
-                    name={iconName}
+                    icon={iconName}
                     color={formData.color}
-                    size={20}
+                    size="md"
                   />
                 </button>
               ))}

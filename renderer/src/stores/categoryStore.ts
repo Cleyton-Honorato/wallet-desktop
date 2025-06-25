@@ -45,6 +45,13 @@ const defaultCategories: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>[] = [
   
   // Categorias de Despesa
   {
+    name: 'Cartão de Crédito',
+    type: 'expense',
+    color: '#EC4899',
+    icon: 'CreditCard',
+    description: 'Compras no cartão de crédito'
+  },
+  {
     name: 'Alimentação',
     type: 'expense',
     color: '#EF4444',
