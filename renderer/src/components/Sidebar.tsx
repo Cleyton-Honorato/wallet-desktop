@@ -1,10 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, CreditCard, Wallet, Tag, Settings, HelpCircle } from 'lucide-react'
+import { Home, CreditCard, Wallet, Tag, Settings, HelpCircle, Calendar, TrendingUp } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Transações', href: '/transactions', icon: CreditCard },
+  { name: 'Despesas Fixas', href: '/fixed-expenses', icon: Calendar },
+  { name: 'Despesas Variadas', href: '/variable-expenses', icon: TrendingUp },
   { name: 'Categorias', href: '/categories', icon: Tag },
 ]
 
