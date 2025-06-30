@@ -13,6 +13,7 @@ interface VariableExpenseStore {
   updateVariableExpense: (id: string, expense: UpdateVariableExpenseData) => void
   removeVariableExpense: (id: string) => void
   markAsCompleted: (id: string, actualAmount: number) => void
+  undoCompleted: (id: string) => void
   getExpensesByMonth: (month: string) => VariableExpense[]
   getExpensesByCategory: (category: string) => VariableExpense[]
   getMonthlyEstimatedTotal: (month: string) => number
@@ -75,6 +76,41 @@ export const useVariableExpenseStore = create<VariableExpenseStore>()(
 
         // Cria automaticamente uma transação quando marcada como completa
         get().createTransactionFromExpense(id)
+      },
+
+      undoCompleted: (id) => {
+        const expense = get().variableExpenses.find((e) => e.id === id)
+        if (!expense || !expense.isCompleted) return
+
+        // Remove a transação associada
+        const transactionStore = useTransactionStore.getState()
+        const expenseTitle = `${expense.title} (Despesa Variada)`
+        
+        // Busca e remove a transação correspondente
+        const transactions = transactionStore.transactions
+        const transactionToRemove = transactions.find(t => 
+          t.title === expenseTitle && 
+          t.amount === expense.actualAmount &&
+          t.type === 'expense'
+        )
+        
+        if (transactionToRemove) {
+          transactionStore.removeTransaction(transactionToRemove.id)
+        }
+
+        // Marca a despesa como não concluída
+        set((state) => ({
+          variableExpenses: state.variableExpenses.map((exp) =>
+            exp.id === id
+              ? { 
+                  ...exp, 
+                  isCompleted: false,
+                  actualAmount: undefined,
+                  updatedAt: new Date().toISOString()
+                }
+              : exp
+          ),
+        }))
       },
 
       getExpensesByMonth: (month) => {

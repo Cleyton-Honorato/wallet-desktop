@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Calendar, DollarSign, Edit2, Trash2, Power, PowerOff, RotateCcw, Eye } from 'lucide-react'
+import { Plus, Calendar, DollarSign, Edit2, Trash2, Power, PowerOff, RotateCcw, Eye, CreditCard } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
@@ -21,7 +21,8 @@ export function FixedExpenses() {
     generateMonthlyTransactions,
     getProcessedExpensesInMonth,
     clearGeneratedTransactionsForMonth,
-    deleteTransactionAndControl
+    deleteTransactionAndControl,
+    createTransactionForExpense
   } = useFixedExpenseStore()
   
   const { categories } = useCategoryStore()
@@ -34,6 +35,24 @@ export function FixedExpenses() {
   const handleDelete = (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta despesa fixa?')) {
       removeFixedExpense(id)
+    }
+  }
+
+  const handlePayExpense = (expense: FixedExpense) => {
+    const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
+    
+    // Verifica se já foi processada
+    if (getProcessedExpensesInMonth(currentMonth).some(p => p.expenseId === expense.id)) {
+      alert('Esta despesa já foi paga neste mês!')
+      return
+    }
+    
+    const success = createTransactionForExpense(expense.id, currentMonth)
+    
+    if (success) {
+      alert(`✅ Transação criada com sucesso para ${expense.title}!`)
+    } else {
+      alert(`❌ Não foi possível criar a transação para ${expense.title}. Verifique se a despesa está ativa e no período correto.`)
     }
   }
 
@@ -221,7 +240,17 @@ export function FixedExpenses() {
                         >
                           <RotateCcw className="h-4 w-4" />
                         </Button>
-                      ) : null}
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => handlePayExpense(expense)}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <CreditCard className="h-4 w-4 mr-1" />
+                          Pagar
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"

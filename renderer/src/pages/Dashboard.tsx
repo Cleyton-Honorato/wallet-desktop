@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { DollarSign, TrendingUp, TrendingDown, ArrowRight, Calendar, PieChart, Clock, Plus } from 'lucide-react'
+import { DollarSign, TrendingUp, TrendingDown, ArrowRight, Calendar, PieChart, Clock, Plus, CheckCircle, AlertTriangle, XCircle, CalendarClock } from 'lucide-react'
 import { useTransactionStore } from '../stores/transactionStore'
 import { useCategoryStore } from '../stores/categoryStore'
+import { useFixedExpenseStore } from '../stores/fixedExpenseStore'
 import { CategoryIcon } from '../components/CategoryIcon'
 import { TransactionDialog } from '../components/TransactionDialog'
 import { Button } from '../components/ui/button'
@@ -11,6 +12,7 @@ import { ptBR } from 'date-fns/locale'
 export function Dashboard() {
   const { transactions, getTotalBalance, getTotalIncome, getTotalExpenses } = useTransactionStore()
   const { categories } = useCategoryStore()
+  const { getMonthlyExpenseStats, getRemainingInstallments, getExpenseStatus } = useFixedExpenseStore()
   
   const totalBalance = getTotalBalance()
   const totalIncome = getTotalIncome()
@@ -59,6 +61,42 @@ export function Dashboard() {
   const topCategories = Object.values(categoryStats)
     .sort((a, b) => b.total - a.total)
     .slice(0, 5)
+
+  // Estatísticas das despesas fixas do mês atual
+  const monthlyExpenseStats = getMonthlyExpenseStats()
+
+  // Função para obter o badge de status
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Paga
+          </span>
+        )
+      case 'overdue':
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+            <XCircle className="w-3 h-3 mr-1" />
+            Vencida
+          </span>
+        )
+      case 'upcoming':
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+            <CalendarClock className="w-3 h-3 mr-1" />
+            A Vencer
+          </span>
+        )
+      default:
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            Inativa
+          </span>
+        )
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -125,6 +163,318 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Visão Geral das Despesas Fixas do Mês */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold">Despesas Fixas do Mês</h2>
+          <p className="text-sm text-muted-foreground">
+            Status das suas despesas fixas para {format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })}
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pagas</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {monthlyExpenseStats.paidExpenses.length}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {formatCurrency(monthlyExpenseStats.paidAmount)}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Vencidas</CardTitle>
+              <XCircle className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                {monthlyExpenseStats.overdueExpenses.length}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {formatCurrency(monthlyExpenseStats.overdueAmount)}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">A Vencer</CardTitle>
+              <CalendarClock className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">
+                {monthlyExpenseStats.upcomingExpenses.length}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {formatCurrency(monthlyExpenseStats.upcomingAmount)}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total do Mês</CardTitle>
+              <DollarSign className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">
+                {monthlyExpenseStats.totalExpenses.length}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {formatCurrency(monthlyExpenseStats.totalAmount)}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Detalhes das Despesas Vencidas e A Vencer */}
+        {(monthlyExpenseStats.overdueExpenses.length > 0 || monthlyExpenseStats.upcomingExpenses.length > 0) && (
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Despesas Vencidas */}
+            {monthlyExpenseStats.overdueExpenses.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium text-red-600">
+                    Despesas Vencidas ({monthlyExpenseStats.overdueExpenses.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {monthlyExpenseStats.overdueExpenses.slice(0, 3).map(expense => {
+                      const category = categories.find(c => c.id === expense.category)
+                      const dueDate = new Date(new Date().getFullYear(), new Date().getMonth(), expense.dueDay)
+                      
+                      return (
+                        <div key={expense.id} className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {category && (
+                              <CategoryIcon 
+                                icon={category.icon} 
+                                color={category.color}
+                                className="w-6 h-6"
+                              />
+                            )}
+                            <div>
+                              <p className="font-medium text-sm">{expense.title}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Venceu em {format(dueDate, "dd/MM")}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-red-600 text-sm">
+                              {formatCurrency(expense.amount)}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {monthlyExpenseStats.overdueExpenses.length > 3 && (
+                      <p className="text-xs text-muted-foreground text-center pt-2">
+                        E mais {monthlyExpenseStats.overdueExpenses.length - 3} despesas vencidas
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Próximas Despesas */}
+            {monthlyExpenseStats.upcomingExpenses.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium text-orange-600">
+                    Próximas a Vencer ({monthlyExpenseStats.upcomingExpenses.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {monthlyExpenseStats.upcomingExpenses
+                      .sort((a, b) => a.dueDay - b.dueDay)
+                      .slice(0, 3)
+                      .map(expense => {
+                        const category = categories.find(c => c.id === expense.category)
+                        const dueDate = new Date(new Date().getFullYear(), new Date().getMonth(), expense.dueDay)
+                        
+                        return (
+                          <div key={expense.id} className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {category && (
+                                <CategoryIcon 
+                                  icon={category.icon} 
+                                  color={category.color}
+                                  className="w-6 h-6"
+                                />
+                              )}
+                              <div>
+                                <p className="font-medium text-sm">{expense.title}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Vence em {format(dueDate, "dd/MM")}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium text-orange-600 text-sm">
+                                {formatCurrency(expense.amount)}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    {monthlyExpenseStats.upcomingExpenses.length > 3 && (
+                      <p className="text-xs text-muted-foreground text-center pt-2">
+                        E mais {monthlyExpenseStats.upcomingExpenses.length - 3} despesas a vencer
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Tabela Detalhada das Despesas Fixas */}
+      {monthlyExpenseStats.totalExpenses.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Despesas Fixas do Mês - Detalhado</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Todas as despesas fixas para {format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Despesa</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Categoria</th>
+                    <th className="text-right py-3 px-4 font-medium text-sm text-muted-foreground">Valor</th>
+                    <th className="text-center py-3 px-4 font-medium text-sm text-muted-foreground">Vencimento</th>
+                    <th className="text-center py-3 px-4 font-medium text-sm text-muted-foreground">Status</th>
+                    <th className="text-center py-3 px-4 font-medium text-sm text-muted-foreground">Parcelas Restantes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyExpenseStats.totalExpenses
+                    .sort((a, b) => a.dueDay - b.dueDay)
+                    .map(expense => {
+                      const category = categories.find(c => c.id === expense.category)
+                      const status = getExpenseStatus(expense)
+                      const remainingInstallments = getRemainingInstallments(expense)
+                      const dueDate = new Date(new Date().getFullYear(), new Date().getMonth(), expense.dueDay)
+                      
+                      // Ajusta se o dia não existe no mês
+                      if (dueDate.getMonth() !== new Date().getMonth()) {
+                        dueDate.setDate(0)
+                      }
+
+                      return (
+                        <tr key={expense.id} className="border-b hover:bg-muted/50">
+                          <td className="py-4 px-4">
+                            <div>
+                              <p className="font-medium text-sm">{expense.title}</p>
+                              {expense.description && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {expense.description}
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-4 px-4">
+                            {category && (
+                              <div className="flex items-center gap-2">
+                                <CategoryIcon 
+                                  icon={category.icon} 
+                                  color={category.color}
+                                  className="w-5 h-5"
+                                />
+                                <span className="text-sm">{category.name}</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-4 px-4 text-right">
+                            <span className="font-medium text-sm">
+                              {formatCurrency(expense.amount)}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4 text-center">
+                            <div className="text-sm">
+                              <p className="font-medium">
+                                {format(dueDate, "dd/MM")}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Dia {expense.dueDay}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4 text-center">
+                            {getStatusBadge(status)}
+                          </td>
+                          <td className="py-4 px-4 text-center">
+                            <div className="text-sm">
+                              {remainingInstallments !== null ? (
+                                <>
+                                  <p className="font-medium">
+                                    {remainingInstallments} {remainingInstallments === 1 ? 'mês' : 'meses'}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    até {format(new Date(expense.endDate!), "MM/yyyy")}
+                                  </p>
+                                </>
+                              ) : (
+                                <span className="text-muted-foreground">Indefinido</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Resumo da tabela */}
+            <div className="mt-6 p-4 bg-muted/30 rounded-lg">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div>
+                  <p className="text-2xl font-bold text-green-600">
+                    {monthlyExpenseStats.paidExpenses.length}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Pagas</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-red-600">
+                    {monthlyExpenseStats.overdueExpenses.length}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Vencidas</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-orange-600">
+                    {monthlyExpenseStats.upcomingExpenses.length}
+                  </p>
+                  <p className="text-xs text-muted-foreground">A Vencer</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {formatCurrency(monthlyExpenseStats.totalAmount)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Total</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Top Categorias */}

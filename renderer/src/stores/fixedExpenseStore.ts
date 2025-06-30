@@ -26,6 +26,21 @@ interface FixedExpenseStore {
   deleteTransactionAndControl: (expenseId: string, month: string) => boolean
   getMonthsWithGeneratedTransactions: () => string[]
   clearGeneratedTransactionsForMonth: (month: string) => number
+  getMonthlyExpenseStats: (month?: string) => {
+    totalExpenses: FixedExpense[]
+    paidExpenses: FixedExpense[]
+    pendingExpenses: FixedExpense[]
+    overdueExpenses: FixedExpense[]
+    upcomingExpenses: FixedExpense[]
+    totalAmount: number
+    paidAmount: number
+    pendingAmount: number
+    overdueAmount: number
+    upcomingAmount: number
+  }
+  getRemainingInstallments: (expense: FixedExpense, currentMonth?: string) => number | null
+  getExpenseStatus: (expense: FixedExpense, currentMonth?: string) => 'paid' | 'overdue' | 'upcoming' | 'inactive'
+  createTransactionForExpense: (expenseId: string, month?: string) => boolean
 }
 
 export const useFixedExpenseStore = create<FixedExpenseStore>()(
@@ -255,6 +270,249 @@ export const useFixedExpenseStore = create<FixedExpenseStore>()(
         }))
         
         return transactionsToRemove.length
+      },
+
+      getMonthlyExpenseStats: (month) => {
+        const now = new Date()
+        const currentMonth = month || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+        const [year, monthNum] = currentMonth.split('-').map(Number)
+        const today = new Date()
+        
+        // Obtém despesas ativas que devem estar ativas no mês especificado
+        const allActiveExpenses = get().getActiveExpenses()
+        const totalExpenses = allActiveExpenses.filter(expense => {
+          const startDate = new Date(expense.startDate)
+          const startYear = startDate.getFullYear()
+          const startMonth = startDate.getMonth() + 1
+          
+          // Verifica se a despesa já começou
+          if (startYear > year || (startYear === year && startMonth > monthNum)) {
+            return false
+          }
+          
+          // Verifica se a despesa ainda não terminou
+          if (expense.endDate) {
+            const endDate = new Date(expense.endDate)
+            const endYear = endDate.getFullYear()
+            const endMonth = endDate.getMonth() + 1
+            
+            if (endYear < year || (endYear === year && endMonth < monthNum)) {
+              return false
+            }
+          }
+          
+          return true
+        })
+        
+        // Despesas que já foram processadas (têm transação gerada)
+        const paidExpenses = totalExpenses.filter(expense => 
+          get().isExpenseProcessedInMonth(expense.id, currentMonth)
+        )
+        
+        // Despesas que ainda não foram processadas
+        const pendingExpenses = totalExpenses.filter(expense => 
+          !get().isExpenseProcessedInMonth(expense.id, currentMonth)
+        )
+        
+        // Despesas vencidas (dia de vencimento já passou no mês atual)
+        const overdueExpenses = pendingExpenses.filter(expense => {
+          if (currentMonth !== `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`) {
+            return false // Só considera vencidas no mês atual
+          }
+          
+          const dueDate = new Date(year, monthNum - 1, expense.dueDay)
+          
+          // Ajusta se o dia não existe no mês
+          if (dueDate.getMonth() !== monthNum - 1) {
+            dueDate.setDate(0) // Vai para o último dia do mês anterior
+          }
+          
+          return dueDate < today
+        })
+        
+        // Despesas que ainda vão vencer (no mês atual)
+        const upcomingExpenses = pendingExpenses.filter(expense => {
+          if (currentMonth !== `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`) {
+            return true // Se não é o mês atual, todas pendentes são "futuras"
+          }
+          
+          const dueDate = new Date(year, monthNum - 1, expense.dueDay)
+          
+          // Ajusta se o dia não existe no mês
+          if (dueDate.getMonth() !== monthNum - 1) {
+            dueDate.setDate(0)
+          }
+          
+          return dueDate >= today
+        })
+
+        const totalAmount = totalExpenses.reduce((total, expense) => total + expense.amount, 0)
+        const paidAmount = paidExpenses.reduce((total, expense) => total + expense.amount, 0)
+        const pendingAmount = pendingExpenses.reduce((total, expense) => total + expense.amount, 0)
+        const overdueAmount = overdueExpenses.reduce((total, expense) => total + expense.amount, 0)
+        const upcomingAmount = upcomingExpenses.reduce((total, expense) => total + expense.amount, 0)
+
+        return {
+          totalExpenses,
+          paidExpenses,
+          pendingExpenses,
+          overdueExpenses,
+          upcomingExpenses,
+          totalAmount,
+          paidAmount,
+          pendingAmount,
+          overdueAmount,
+          upcomingAmount
+        }
+      },
+
+      getRemainingInstallments: (expense, currentMonth) => {
+        if (!expense.endDate) {
+          return null // Despesa sem fim definido
+        }
+        
+        const now = new Date()
+        const current = currentMonth || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+        const [currentYear, currentMonthNum] = current.split('-').map(Number)
+        
+        const endDate = new Date(expense.endDate)
+        const endYear = endDate.getFullYear()
+        const endMonth = endDate.getMonth() + 1
+        
+        // Calcula a diferença em meses
+        const remainingMonths = (endYear - currentYear) * 12 + (endMonth - currentMonthNum)
+        
+        return Math.max(0, remainingMonths + 1) // +1 para incluir o mês atual
+      },
+
+      getExpenseStatus: (expense, currentMonth) => {
+        const now = new Date()
+        const current = currentMonth || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+        const [currentYear, currentMonthNum] = current.split('-').map(Number)
+        
+        // Verifica se a despesa está ativa
+        if (!expense.isActive) {
+          return 'inactive'
+        }
+        
+        // Verifica se a despesa já começou
+        const startDate = new Date(expense.startDate)
+        const startYear = startDate.getFullYear()
+        const startMonth = startDate.getMonth() + 1
+        
+        if (startYear > currentYear || (startYear === currentYear && startMonth > currentMonthNum)) {
+          return 'inactive' // Ainda não começou
+        }
+        
+        // Verifica se a despesa já terminou
+        if (expense.endDate) {
+          const endDate = new Date(expense.endDate)
+          const endYear = endDate.getFullYear()
+          const endMonth = endDate.getMonth() + 1
+          
+          if (endYear < currentYear || (endYear === currentYear && endMonth < currentMonthNum)) {
+            return 'inactive' // Já terminou
+          }
+        }
+        
+        // Verifica se já foi paga no mês
+        if (get().isExpenseProcessedInMonth(expense.id, current)) {
+          return 'paid'
+        }
+        
+        // Se não foi paga, verifica se está vencida ou ainda vai vencer
+        if (current === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`) {
+          const today = now
+          const dueDate = new Date(currentYear, currentMonthNum - 1, expense.dueDay)
+          
+          // Ajusta se o dia não existe no mês
+          if (dueDate.getMonth() !== currentMonthNum - 1) {
+            dueDate.setDate(0)
+          }
+          
+          return dueDate < today ? 'overdue' : 'upcoming'
+        }
+        
+        // Para meses diferentes do atual, considera como upcoming
+        return 'upcoming'
+      },
+
+      createTransactionForExpense: (expenseId, month) => {
+        const now = new Date()
+        const currentMonth = month || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+        
+        // Encontra a despesa
+        const expense = get().fixedExpenses.find(e => e.id === expenseId)
+        if (!expense || !expense.isActive) {
+          return false
+        }
+        
+        // Verifica se já foi processada
+        if (get().isExpenseProcessedInMonth(expenseId, currentMonth)) {
+          return false
+        }
+        
+        const [year, monthNum] = currentMonth.split('-').map(Number)
+        
+        // Verifica se a despesa está no período ativo
+        const startDate = new Date(expense.startDate)
+        const startYear = startDate.getFullYear()
+        const startMonth = startDate.getMonth() + 1
+        
+        if (startYear > year || (startYear === year && startMonth > monthNum)) {
+          return false // Ainda não começou
+        }
+        
+        if (expense.endDate) {
+          const endDate = new Date(expense.endDate)
+          const endYear = endDate.getFullYear()
+          const endMonth = endDate.getMonth() + 1
+          
+          if (endYear < year || (endYear === year && endMonth < monthNum)) {
+            return false // Já terminou
+          }
+        }
+
+        // Cria a data de vencimento
+        const dueDate = new Date(year, monthNum - 1, expense.dueDay)
+        
+        // Ajusta se o dia não existe no mês
+        if (dueDate.getMonth() !== monthNum - 1) {
+          dueDate.setDate(0)
+        }
+
+        // Cria a transação
+        const transactionStore = useTransactionStore.getState()
+        const transactionId = Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9)
+        
+        const transactionData = {
+          id: transactionId,
+          title: `${expense.title} (Despesa Fixa)`,
+          amount: expense.amount,
+          type: 'expense' as const,
+          category: expense.category,
+          date: dueDate.toISOString(),
+          description: `${expense.description || ''} - Pago individualmente`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+        
+        // Adiciona a transação
+        transactionStore.transactions.push(transactionData)
+        
+        // Registra o controle
+        const generatedTransaction = {
+          expenseId: expenseId,
+          month: currentMonth,
+          transactionId: transactionId,
+          generatedAt: new Date().toISOString()
+        }
+        
+        set((state) => ({
+          generatedTransactions: [...state.generatedTransactions, generatedTransaction]
+        }))
+        
+        return true
       },
     }),
     {

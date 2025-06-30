@@ -1,9 +1,12 @@
 import { useState } from 'react'
-import { Plus, TrendingUp, DollarSign, Edit2, Trash2, Check, Copy, Calendar } from 'lucide-react'
+import { Plus, TrendingUp, DollarSign, Edit2, Trash2, Check, Copy, Calendar, Undo2 } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog'
+import { Input } from '../components/ui/input'
+import { Label } from '../components/ui/label'
 import { useVariableExpenseStore } from '../stores/variableExpenseStore'
 import { useCategoryStore } from '../stores/categoryStore'
 import { VariableExpenseDialog } from '../components/VariableExpenseDialog'
@@ -13,6 +16,9 @@ import { VariableExpense } from '../types/expense'
 export function VariableExpenses() {
   const [selectedExpense, setSelectedExpense] = useState<VariableExpense | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
+  const [paymentExpense, setPaymentExpense] = useState<VariableExpense | null>(null)
+  const [actualAmount, setActualAmount] = useState('')
   
   // Mês atual como padrão
   const currentDate = new Date()
@@ -23,6 +29,7 @@ export function VariableExpenses() {
     variableExpenses,
     removeVariableExpense,
     markAsCompleted,
+    undoCompleted,
     getExpensesByMonth,
     getMonthlyEstimatedTotal,
     getMonthlyActualTotal,
@@ -44,6 +51,21 @@ export function VariableExpenses() {
     }
   }
 
+  const handlePayExpense = (expense: VariableExpense) => {
+    setPaymentExpense(expense)
+    setActualAmount(expense.estimatedAmount.toString())
+    setIsPaymentDialogOpen(true)
+  }
+
+  const handleConfirmPayment = () => {
+    if (paymentExpense && actualAmount && !isNaN(Number(actualAmount))) {
+      markAsCompleted(paymentExpense.id, Number(actualAmount))
+      setIsPaymentDialogOpen(false)
+      setPaymentExpense(null)
+      setActualAmount('')
+    }
+  }
+
   const handleMarkCompleted = (id: string) => {
     const expense = variableExpenses.find(e => e.id === id)
     if (!expense) return
@@ -55,6 +77,12 @@ export function VariableExpenses() {
 
     if (actualAmount && !isNaN(Number(actualAmount))) {
       markAsCompleted(id, Number(actualAmount))
+    }
+  }
+
+  const handleUndoCompleted = (id: string) => {
+    if (confirm('Tem certeza que deseja desfazer esta despesa? Isso removerá a transação associada.')) {
+      undoCompleted(id)
     }
   }
 
@@ -209,11 +237,11 @@ export function VariableExpenses() {
                     <div className="flex gap-2">
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() => handleMarkCompleted(expense.id)}
-                        className="text-green-600 hover:text-green-700"
+                        onClick={() => handlePayExpense(expense)}
+                        className="bg-green-600 hover:bg-green-700 text-white"
                       >
-                        <Check className="h-4 w-4" />
+                        <DollarSign className="h-4 w-4 mr-1" />
+                        Pagar
                       </Button>
                       <Button
                         size="sm"
@@ -307,6 +335,15 @@ export function VariableExpenses() {
                       <Button
                         size="sm"
                         variant="outline"
+                        onClick={() => handleUndoCompleted(expense.id)}
+                        className="text-orange-600 hover:text-orange-700"
+                      >
+                        <Undo2 className="h-4 w-4" />
+                        Desfazer
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
                         onClick={() => duplicateExpenseToNextMonth(expense.id)}
                       >
                         <Copy className="h-4 w-4" />
@@ -362,6 +399,51 @@ export function VariableExpenses() {
         }}
         defaultMonth={selectedMonth}
       />
+
+      {/* Dialog de Pagamento */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Pagar Despesa</DialogTitle>
+            <DialogDescription>
+              Informe o valor real gasto para "{paymentExpense?.title}"
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="actual-amount">Valor Real</Label>
+              <Input
+                id="actual-amount"
+                type="number"
+                step="0.01"
+                value={actualAmount}
+                onChange={(e) => setActualAmount(e.target.value)}
+                placeholder="0,00"
+              />
+              <p className="text-sm text-muted-foreground mt-1">
+                Valor estimado: {paymentExpense && formatCurrency(paymentExpense.estimatedAmount)}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsPaymentDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleConfirmPayment}
+              disabled={!actualAmount || isNaN(Number(actualAmount))}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Confirmar Pagamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 
