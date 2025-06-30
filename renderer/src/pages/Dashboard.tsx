@@ -1,8 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { DollarSign, TrendingUp, TrendingDown, ArrowRight, Calendar, PieChart, Clock, Plus, CheckCircle, AlertTriangle, XCircle, CalendarClock } from 'lucide-react'
+import { DollarSign, TrendingUp, TrendingDown, ArrowRight, Calendar, PieChart, Clock, Plus, CheckCircle, AlertTriangle, XCircle, CalendarClock, PiggyBank } from 'lucide-react'
 import { useTransactionStore } from '../stores/transactionStore'
 import { useCategoryStore } from '../stores/categoryStore'
 import { useFixedExpenseStore } from '../stores/fixedExpenseStore'
+import { useFixedIncomeStore } from '../stores/fixedIncomeStore'
+import { useVariableIncomeStore } from '../stores/variableIncomeStore'
 import { CategoryIcon } from '../components/CategoryIcon'
 import { TransactionDialog } from '../components/TransactionDialog'
 import { Button } from '../components/ui/button'
@@ -13,10 +15,20 @@ export function Dashboard() {
   const { transactions, getTotalBalance, getTotalIncome, getTotalExpenses } = useTransactionStore()
   const { categories } = useCategoryStore()
   const { getMonthlyExpenseStats, getRemainingInstallments, getExpenseStatus } = useFixedExpenseStore()
+  const { getMonthlyTotal: getFixedIncomeMonthlyTotal, getActiveIncomes } = useFixedIncomeStore()
+  const { getMonthlyEstimatedTotal, getMonthlyActualTotal, getIncomesByMonth } = useVariableIncomeStore()
   
   const totalBalance = getTotalBalance()
   const totalIncome = getTotalIncome()
   const totalExpenses = getTotalExpenses()
+
+  // Estatísticas das receitas
+  const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+  const fixedIncomeMonthlyTotal = getFixedIncomeMonthlyTotal()
+  const variableIncomeEstimated = getMonthlyEstimatedTotal(currentMonth)
+  const variableIncomeActual = getMonthlyActualTotal(currentMonth)
+  const activeFixedIncomes = getActiveIncomes()
+  const currentMonthVariableIncomes = getIncomesByMonth(currentMonth)
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -475,6 +487,132 @@ export function Dashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Visão Geral das Receitas do Mês */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold">Receitas do Mês</h2>
+          <p className="text-sm text-muted-foreground">
+            Status das suas receitas para {format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })}
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Receitas Fixas</CardTitle>
+              <DollarSign className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {formatCurrency(fixedIncomeMonthlyTotal)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {activeFixedIncomes.length} receitas ativas
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Variáveis Estimado</CardTitle>
+              <TrendingUp className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">
+                {formatCurrency(variableIncomeEstimated)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {currentMonthVariableIncomes.length} receitas cadastradas
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Variáveis Realizadas</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {formatCurrency(variableIncomeActual)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {currentMonthVariableIncomes.filter(i => i.isReceived).length} recebidas
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Receitas</CardTitle>
+              <PiggyBank className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {formatCurrency(fixedIncomeMonthlyTotal + variableIncomeActual)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Fixas + Variáveis realizadas
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Receitas Variáveis Pendentes */}
+        {currentMonthVariableIncomes.filter(i => !i.isReceived).length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-orange-600">
+                Receitas Variáveis Pendentes ({currentMonthVariableIncomes.filter(i => !i.isReceived).length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {currentMonthVariableIncomes
+                  .filter(income => !income.isReceived)
+                  .slice(0, 3)
+                  .map(income => {
+                    const category = categories.find(c => c.id === income.category)
+                    
+                    return (
+                      <div key={income.id} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {category && (
+                            <CategoryIcon 
+                              icon={category.icon} 
+                              color={category.color}
+                              className="w-6 h-6"
+                            />
+                          )}
+                          <div>
+                            <p className="font-medium text-sm">{income.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {category?.name}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium text-blue-600 text-sm">
+                            {formatCurrency(income.estimatedAmount)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Estimado
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                {currentMonthVariableIncomes.filter(i => !i.isReceived).length > 3 && (
+                  <p className="text-xs text-muted-foreground text-center pt-2">
+                    E mais {currentMonthVariableIncomes.filter(i => !i.isReceived).length - 3} receitas pendentes
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Top Categorias */}
