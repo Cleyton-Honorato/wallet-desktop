@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, CreditCard, Wallet, Tag, Settings, HelpCircle, Calendar, TrendingUp, DollarSign, PiggyBank } from 'lucide-react'
+import { Home, CreditCard, Wallet, Tag, Settings, HelpCircle, Calendar, TrendingUp, DollarSign } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 const navigation = [
@@ -7,8 +7,7 @@ const navigation = [
   { name: 'Transações', href: '/transactions', icon: CreditCard },
   { name: 'Despesas Fixas', href: '/fixed-expenses', icon: Calendar },
   { name: 'Despesas Variadas', href: '/variable-expenses', icon: TrendingUp },
-  { name: 'Receitas Fixas', href: '/fixed-incomes', icon: DollarSign },
-  { name: 'Receitas Variadas', href: '/variable-incomes', icon: PiggyBank },
+  { name: 'Receitas', href: '/incomes', icon: DollarSign },
   { name: 'Categorias', href: '/categories', icon: Tag },
 ]
 

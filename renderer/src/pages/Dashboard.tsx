@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { DollarSign, TrendingUp, TrendingDown, Calendar, CheckCircle, XCircle, CalendarClock, AlertTriangle, Clock, Plus } from 'lucide-react'
+import { DollarSign, TrendingUp, TrendingDown, Calendar, CheckCircle, XCircle, CalendarClock, AlertTriangle, Clock } from 'lucide-react'
 import { useTransactionStore } from '../stores/transactionStore'
 import { useCategoryStore } from '../stores/categoryStore'
 import { useFixedExpenseStore } from '../stores/fixedExpenseStore'
@@ -8,7 +8,6 @@ import { useVariableIncomeStore } from '../stores/variableIncomeStore'
 import { useVariableExpenseStore } from '../stores/variableExpenseStore'
 import { CategoryIcon } from '../components/CategoryIcon'
 import { TransactionDialog } from '../components/TransactionDialog'
-import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { format, isAfter, isBefore, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -20,9 +19,6 @@ export function Dashboard() {
     getMonthlyExpenseStats, 
     getExpenseStatus, 
     getRemainingInstallments,
-    fixedExpenses,
-    getActiveExpenses,
-    getTotalMonthlyAmount
   } = useFixedExpenseStore()
   
   const { 
@@ -33,8 +29,8 @@ export function Dashboard() {
     getPendingExpenses: getPendingVariableExpenses
   } = useVariableExpenseStore()
 
-  const { getMonthlyTotal: getFixedIncomeMonthlyTotal, hasTransactionForMonth } = useFixedIncomeStore()
-  const { getMonthlyEstimatedTotal, getMonthlyActualTotal, getIncomesByMonth } = useVariableIncomeStore()
+  const { getMonthlyTotal: getFixedIncomeMonthlyTotal } = useFixedIncomeStore()
+  const {  getMonthlyActualTotal, getIncomesByMonth } = useVariableIncomeStore()
   
   const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
   const today = new Date()

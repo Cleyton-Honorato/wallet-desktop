@@ -5,8 +5,7 @@ import { Transactions } from './pages/Transactions'
 import { Categories } from './pages/Categories'
 import { FixedExpenses } from './pages/FixedExpenses'
 import { VariableExpenses } from './pages/VariableExpenses'
-import { FixedIncomes } from './pages/FixedIncomes'
-import { VariableIncomes } from './pages/VariableIncomes'
+import { Incomes } from './pages/Incomes'
 import { ThemeProvider } from './contexts/ThemeContext'
 
 function App() {
@@ -19,8 +18,7 @@ function App() {
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/fixed-expenses" element={<FixedExpenses />} />
             <Route path="/variable-expenses" element={<VariableExpenses />} />
-            <Route path="/fixed-incomes" element={<FixedIncomes />} />
-            <Route path="/variable-incomes" element={<VariableIncomes />} />
+            <Route path="/incomes" element={<Incomes />} />
             <Route path="/categories" element={<Categories />} />
           </Routes>
         </Layout>
