@@ -4,6 +4,8 @@ import { ThemeToggle } from './ThemeToggle'
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
   '/transactions': 'Transações',
+  '/expenses': 'Despesas',
+  '/incomes': 'Receitas',
   '/categories': 'Categorias',
 }
 

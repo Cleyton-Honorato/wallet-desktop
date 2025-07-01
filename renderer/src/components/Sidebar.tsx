@@ -5,8 +5,7 @@ import { cn } from '../lib/utils'
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Transações', href: '/transactions', icon: CreditCard },
-  { name: 'Despesas Fixas', href: '/fixed-expenses', icon: Calendar },
-  { name: 'Despesas Variadas', href: '/variable-expenses', icon: TrendingUp },
+  { name: 'Despesas', href: '/expenses', icon: Calendar },
   { name: 'Receitas', href: '/incomes', icon: DollarSign },
   { name: 'Categorias', href: '/categories', icon: Tag },
 ]
